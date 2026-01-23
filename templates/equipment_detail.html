@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ equipment.name }} - MedAsset Sentinel{% endblock %}
+
+{% block content %}
+<div class="mb-md">
+    <a href="{{ url_for('equipment.list') }}" style="color: var(--accent-primary);">← Back to Equipment List</a>
+</div>
+
+<div class="flex-between mb-lg">
+    <div>
+        <h1 style="font-size: 32px; font-weight: 600; margin-bottom: 4px;">{{ equipment.name }}</h1>
+        <p class="text-muted">Serial: {{ equipment.serial_number }}</p>
+    </div>
+    <div class="flex flex-gap-sm">
+        <button class="btn btn-secondary" onclick="alert('Edit functionality: Phase 2')">Edit</button>
+        <form method="POST" action="{{ url_for('equipment.delete', equipment_id=equipment.id) }}" style="display: inline;" onsubmit="return confirm('Delete {{ equipment.name }}? This cannot be undone.')">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</div>
+
+<!-- CURRENT STATUS PANEL -->
+<div class="panel {% if equipment.current_status.name == 'FAIL' %}panel-critical{% elif equipment.current_status.name == 'WARNING' %}panel-warning{% endif %}">
+    <div class="panel-header">
+        <h2 class="panel-title">Current Status</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div>
+            <p class="text-muted text-small mb-sm">Operational Status</p>
+            <p style="font-size: 24px; font-weight: 600;">
+                <span class="status-indicator status-{{ equipment.current_status.name.lower() }}"></span>
+                {{ equipment.current_status.name }}
+            </p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Location</p>
+            <p style="font-size: 18px;">{{ equipment.location or 'Not specified' }}</p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Type</p>
+            <p>{{ equipment.equipment_type }}</p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Manufacturer</p>
+            <p>{{ equipment.manufacturer or 'Not specified' }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- MAINTENANCE SCHEDULE PANEL -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Maintenance Schedule</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+        <div>
+            <p class="text-muted text-small mb-sm">Maintenance Interval</p>
+            <p>Every {{ equipment.maintenance_interval }} days</p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Last Maintenance</p>
+            <p>{{ equipment.last_maintenance_date.strftime('%Y-%m-%d') if equipment.last_maintenance_date else 'Never' }}</p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Next Maintenance</p>
+            <p>{{ equipment.next_maintenance_date.strftime('%Y-%m-%d') }}</p>
+        </div>
+        <div>
+            <p class="text-muted text-small mb-sm">Status</p>
+            {% set days = equipment.days_until_maintenance() %}
+            {% if days < 0 %}
+            <p style="color: var(--alert-critical); font-weight: 600;">✗ Overdue by {{ days|abs }} days</p>
+            {% elif days <= 7 %}
+            <p style="color: var(--alert-warning); font-weight: 600;">⚠️ Due in {{ days }} days</p>
+            {% else %}
+            <p style="color: var(--accent-success);">✓ Current</p>
+            {% endif %}
+        </div>
+    </div>
+    <button class="btn btn-success btn-full" onclick="document.getElementById('logMaintenanceModal').style.display='flex'">
+        Log Maintenance
+    </button>
+</div>
+
+<!-- ACTIVE ALERTS PANEL -->
+{% if active_alerts %}
+<div class="panel panel-critical">
+    <div class="panel-header">
+        <h2 class="panel-title">Active Alerts</h2>
+    </div>
+    {% for alert in active_alerts %}
+    <div style="padding: 12px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+        <div class="flex-between">
+            <div>
+                <span class="badge badge-{% if alert.severity.name == 'CRITICAL' %}critical{% elif alert.severity.name == 'WARNING' %}warning{% else %}info{% endif %}">
+                    {{ alert.severity.name }}
+                </span>
+                <span style="margin-left: 12px;">{{ alert.message }}</span>
+            </div>
+            <form method="POST" action="{{ url_for('equipment.resolve_alert', alert_id=alert.id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">Resolve</button>
+            </form>
+        </div>
+        <p class="text-small text-muted" style="margin-top: 4px;">Created: {{ alert.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- MAINTENANCE HISTORY PANEL -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Maintenance History</h2>
+    </div>
+    {% if maintenance_history %}
+    {% for log in maintenance_history %}
+    <div style="padding: 12px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+        <p style="font-weight: 600;">{{ log.performed_at.strftime('%Y-%m-%d %H:%M') }} - {{ log.performed_by }}</p>
+        {% if log.notes %}
+        <p class="text-small text-muted" style="font-style: italic; margin-top: 4px;">"{{ log.notes }}"</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="text-muted">No maintenance logs recorded yet.</p>
+    {% endif %}
+</div>
+
+<!-- LOG MAINTENANCE MODAL -->
+<div id="logMaintenanceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-emphasis); border-radius: 6px; width: 500px; max-width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.6);">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 18px; font-weight: 600;">Log Maintenance - {{ equipment.serial_number }}</h2>
+            <button onclick="document.getElementById('logMaintenanceModal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer;">×</button>
+        </div>
+        <form method="POST" action="{{ url_for('equipment.log_maintenance', equipment_id=equipment.id) }}" style="padding: 20px;">
+            <p class="mb-md">Equipment: <strong>{{ equipment.name }}</strong></p>
+
+            <div class="form-group">
+                <label class="form-label">Performed By *</label>
+                <input type="text" name="performed_by" class="form-input" required placeholder="Technician name">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Service Notes</label>
+                <textarea name="notes" class="form-textarea" placeholder="Optional maintenance notes"></textarea>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 4px; margin-bottom: 20px;">
+                <p class="text-small" style="font-weight: 600; margin-bottom: 4px;">This will:</p>
+                <ul style="margin-left: 20px; font-size: 13px; color: var(--text-secondary);">
+                    <li>Update last maintenance date</li>
+                    <li>Calculate new next maintenance date</li>
+                    <li>Resolve maintenance alerts</li>
+                </ul>
+            </div>
+
+            <div class="flex flex-gap-md">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('logMaintenanceModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-success" style="flex: 1;">Log Maintenance</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

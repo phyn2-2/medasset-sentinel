@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MedAsset Sentinel{% endblock %}
+
+{% block extra_css %}
+<style>
+.login-container {
+    min-height: calc(100vh - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 40px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.login-logo {
+    font-size: 48px;
+    margin-bottom: var(--spacing-md);
+}
+
+.login-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.login-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.login-footer-text {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">🏥</div>
+            <h1 class="login-title">MedAsset Sentinel</h1>
+            <p class="login-subtitle">Hospital Equipment Maintenance<br>& Monitoring System</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    class="form-input"
+                    required
+                    autofocus
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-input"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full mt-md">
+                Login
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <p class="login-footer-text">MedAsset Sentinel v1.0.0 | Phase 1</p>
+            <p class="login-footer-text text-muted">Clinical Noir Console</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

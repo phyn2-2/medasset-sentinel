@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MedAsset Sentinel - Hospital Equipment Maintenance & Monitoring System">
+    <title>{% block title %}MedAsset Sentinel{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Top Navigation Bar (only shown when logged in) -->
+    {% if session.get('user_id') %}
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-left">
+                <span class="nav-logo">🏥</span>
+                <span class="nav-title">MedAsset Sentinel</span>
+            </div>
+            <div class="nav-right">
+                <a href="{{ url_for('dashboard.index') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('equipment.list') }}" class="nav-link">Equipment</a>
+                <span class="nav-user">Admin</span>
+                <a href="{{ url_for('auth.logout') }}" class="nav-link-logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Flash Messages (errors, success, info) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            <span class="flash-icon">
+                                {% if category == 'error' %}⚠️{% elif category == 'success' %}✓{% else %}ℹ️{% endif %}
+                            </span>
+                            <span class="flash-text">{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Page-specific content goes here -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer (minimal) -->
+    {% if session.get('user_id') %}
+    <footer class="footer">
+        <div class="footer-container">
+            <span class="footer-text">MedAsset Sentinel v1.0.0 | Phase 1</span>
+            <span class="footer-text">Clinical Noir Console</span>
+        </div>
+    </footer>
+    {% endif %}
+
+    <!-- JavaScript (if needed) -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

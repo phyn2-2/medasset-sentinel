@@ -7,6 +7,7 @@ from flask import Flask
 import models
 from config import config
 from extensions import db
+from routes import auth_bp, dashboard_bp, equipment_bp
 
 def create_app(config_name='development'):
     """
@@ -25,12 +26,21 @@ def create_app(config_name='development'):
     # Initialize extensions
     db.init_app(app)
 
+    # Register blueprints
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(equipment_bp)
+
     # Create database tables
     with app.app_context():
         # Create all tables
         db.create_all()
 
         print("✓ Database tables created successfully")
+        print("Blueprint registered")
+        print(" - Authentication routes")
+        print(" - Dashboard routes")
+        print(" - Equipment routes")
 
     return app
 

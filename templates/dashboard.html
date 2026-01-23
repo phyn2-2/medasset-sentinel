@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MedAsset Sentinel{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-lg">
+    <div>
+        <h1 style="font-size: 32px; font-weight: 600; margin-bottom: 4px;">Dashboard</h1>
+        <p class="text-muted text-small">Last updated: {{ now.strftime('%Y-%m-%d %H:%M UTC') if now else 'now' }}</p>
+    </div>
+</div>
+
+<!-- CRITICAL STATUS PANEL -->
+{% if failing_equipment %}
+<div class="panel panel-critical">
+    <div class="panel-header">
+        <h2 class="panel-title">🔴 Equipment Failures</h2>
+        <span class="panel-badge panel-badge-critical">{{ failing_equipment|length }} CRITICAL</span>
+    </div>
+    <div>
+        {% for equipment in failing_equipment %}
+        <div style="padding: 12px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+            <div class="flex-between">
+                <div>
+                    <span class="status-indicator status-fail"></span>
+                    <a href="{{ url_for('equipment.detail', equipment_id=equipment.id) }}"
+                       style="font-size: 16px; font-weight: 500;">
+                        {{ equipment.name }}
+                    </a>
+                    <span class="text-muted">({{ equipment.location or 'Unknown Location' }})</span>
+                </div>
+                <span class="text-small text-muted">Serial: {{ equipment.serial_number }}</span>
+            </div>
+        </div>
+        {% endfor %}
+        <div style="margin-top: 16px;">
+            <a href="{{ url_for('equipment.list', status='fail') }}" class="btn btn-secondary">
+                View All Equipment →
+            </a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="panel panel-info">
+    <div class="panel-header">
+        <h2 class="panel-title">✓ Equipment Status</h2>
+    </div>
+    <div style="text-align: center; padding: 20px; color: var(--accent-success);">
+        <p style="font-size: 16px;">All equipment operating normally</p>
+        <p class="text-small text-muted">No equipment failures detected</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- MAINTENANCE COMPLIANCE PANEL -->
+<div class="panel panel-warning">
+    <div class="panel-header">
+        <h2 class="panel-title">⚠️ Maintenance Compliance</h2>
+    </div>
+
+    <!-- Overdue Maintenance -->
+    <div style="margin-bottom: 24px;">
+        <div class="flex-between mb-md">
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--alert-critical);">
+                Overdue Maintenance
+            </h3>
+            <span class="badge badge-critical">{{ overdue_equipment|length }} OVERDUE</span>
+        </div>
+        {% if overdue_equipment %}
+        <div style="background: rgba(248, 81, 73, 0.05); padding: 12px; border-radius: 4px;">
+            {% for equipment in overdue_equipment %}
+            <div style="padding: 8px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+                <div class="flex-between">
+                    <div>
+                        <a href="{{ url_for('equipment.detail', equipment_id=equipment.id) }}">
+                            {{ equipment.name }}
+                        </a>
+                        <span class="text-muted text-small">({{ equipment.location or 'Unknown' }})</span>
+                    </div>
+                    <span style="color: var(--alert-critical); font-weight: 600;">
+                        Overdue by: {{ equipment.days_until_maintenance()|abs }} days
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-small">✓ No overdue maintenance</p>
+        {% endif %}
+    </div>
+
+    <!-- Upcoming Maintenance -->
+    <div>
+        <div class="flex-between mb-md">
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--alert-warning);">
+                Upcoming Maintenance (Next 7 Days)
+            </h3>
+            <span class="badge badge-warning">{{ upcoming_equipment|length }} UPCOMING</span>
+        </div>
+        {% if upcoming_equipment %}
+        <div style="background: rgba(240, 173, 78, 0.05); padding: 12px; border-radius: 4px;">
+            {% for equipment in upcoming_equipment %}
+            <div style="padding: 8px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+                <div class="flex-between">
+                    <div>
+                        <a href="{{ url_for('equipment.detail', equipment_id=equipment.id) }}">
+                            {{ equipment.name }}
+                        </a>
+                        <span class="text-muted text-small">({{ equipment.location or 'Unknown' }})</span>
+                    </div>
+                    <span style="color: var(--alert-warning);">
+                        Due in: {{ equipment.days_until_maintenance() }} days
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-small">No maintenance due in next 7 days</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- RECENT ALERTS PANEL -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Recent Alerts</h2>
+        <span class="text-muted text-small">Showing 10 most recent unresolved alerts</span>
+    </div>
+    {% if recent_alerts %}
+    <div>
+        {% for alert in recent_alerts %}
+        <div style="padding: 12px 0; {% if not loop.last %}border-bottom: 1px solid var(--border-subtle);{% endif %}">
+            <div class="flex-between">
+                <div>
+                    {% if alert.severity.name == 'CRITICAL' %}
+                    <span class="badge badge-critical">CRITICAL</span>
+                    {% elif alert.severity.name == 'WARNING' %}
+                    <span class="badge badge-warning">WARNING</span>
+                    {% else %}
+                    <span class="badge badge-info">INFO</span>
+                    {% endif %}
+                    <span style="margin-left: 12px;">{{ alert.message }}</span>
+                </div>
+                <form method="POST" action="{{ url_for('equipment.resolve_alert', alert_id=alert.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-secondary" style="padding: 4px 12px; font-size: 12px;">
+                        Resolve
+                    </button>
+                </form>
+            </div>
+            <div style="margin-top: 4px;">
+                <span class="text-small text-muted">
+                    {{ alert.created_at.strftime('%Y-%m-%d %H:%M') }} UTC
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted" style="text-align: center; padding: 20px;">
+        ✓ No active alerts
+    </p>
+    {% endif %}
+</div>
+
+<!-- SYSTEM OVERVIEW PANEL -->
+<div class="panel panel-neutral">
+    <div class="panel-header">
+        <h2 class="panel-title">System Overview</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div>
+            <p class="text-muted text-small mb-sm">Total Equipment</p>
+            <p style="font-size: 32px; font-weight: 600;">{{ equipment_stats.total }}</p>
+
+            <div style="margin-top: 16px;">
+                <p class="text-muted text-small mb-sm">Status Distribution</p>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <div>
+                        <span class="status-indicator status-ok"></span>
+                        <span>OK: {{ equipment_stats.ok }} ({{ ((equipment_stats.ok / equipment_stats.total * 100) if equipment_stats.total > 0 else 0)|round|int }}%)</span>
+                    </div>
+                    <div>
+                        <span class="status-indicator status-warning"></span>
+                        <span>WARNING: {{ equipment_stats.warning }} ({{ ((equipment_stats.warning / equipment_stats.total * 100) if equipment_stats.total > 0 else 0)|round|int }}%)</span>
+                    </div>
+                    <div>
+                        <span class="status-indicator status-fail"></span>
+                        <span>FAIL: {{ equipment_stats.fail }} ({{ ((equipment_stats.fail / equipment_stats.total * 100) if equipment_stats.total > 0 else 0)|round|int }}%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <p class="text-muted text-small mb-sm">Maintenance Logs</p>
+            <p style="font-size: 32px; font-weight: 600;">{{ maintenance_stats.total_maintenance_logs }}</p>
+
+            <div style="margin-top: 16px;">
+                <p class="text-muted text-small mb-sm">System Health</p>
+                <p style="font-size: 18px; font-weight: 600; color:
+                   {% if equipment_stats.fail > 0 %}var(--alert-critical){% elif equipment_stats.warning > 0 or equipment_stats.overdue_maintenance > 0 %}var(--alert-warning){% else %}var(--accent-success){% endif %};">
+                    {% if equipment_stats.fail > 0 %}Critical{% elif equipment_stats.warning > 0 or equipment_stats.overdue_maintenance > 0 %}Degraded{% else %}Nominal{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dashboard every 30 seconds
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

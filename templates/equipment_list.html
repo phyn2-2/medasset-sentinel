@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Equipment Inventory - MedAsset Sentinel{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-lg">
+    <div>
+        <h1 style="font-size: 28px; font-weight: 600; margin-bottom: 4px;">Equipment Inventory</h1>
+        <p class="text-muted text-small">{{ equipment|length }} items{% if status_filter != 'all' or type_filter != 'all' or location_filter != 'all' %} (filtered){% endif %}</p>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('addEquipmentModal').style.display='flex'">
+        + Add Equipment
+    </button>
+</div>
+
+<!-- FILTER BAR -->
+<div class="panel mb-md">
+    <form method="GET" action="{{ url_for('equipment.list') }}" class="flex flex-gap-md" style="align-items: flex-end;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                <option value="ok" {% if status_filter == 'ok' %}selected{% endif %}>OK</option>
+                <option value="warning" {% if status_filter == 'warning' %}selected{% endif %}>WARNING</option>
+                <option value="fail" {% if status_filter == 'fail' %}selected{% endif %}>FAIL</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+                <option value="all">All</option>
+                {% for type in all_types %}
+                <option value="{{ type }}" {% if type_filter == type %}selected{% endif %}>{{ type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+            <label class="form-label">Location</label>
+            <select name="location" class="form-select">
+                <option value="all">All</option>
+                {% for location in all_locations %}
+                <option value="{{ location }}" {% if location_filter == location %}selected{% endif %}>{{ location }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="{{ url_for('equipment.list') }}" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+<!-- EQUIPMENT TABLE -->
+{% if equipment %}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width: 40px;">ST</th>
+                <th>Equipment Name</th>
+                <th>Type</th>
+                <th>Location</th>
+                <th>Next PM</th>
+                <th style="width: 40px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eq in equipment %}
+            <tr class="{% if eq.current_status.name == 'FAIL' %}table-row-fail{% elif eq.current_status.name == 'WARNING' %}table-row-warning{% endif %}"
+                onclick="window.location='{{ url_for('equipment.detail', equipment_id=eq.id) }}'">
+                <td style="text-align: center;">
+                    <span class="status-indicator status-{{ eq.current_status.name.lower() }}"></span>
+                </td>
+                <td>
+                    <strong>{{ eq.name }}</strong><br>
+                    <span class="text-small text-muted">{{ eq.serial_number }}</span>
+                </td>
+                <td>{{ eq.equipment_type }}</td>
+                <td>{{ eq.location or '—' }}</td>
+                <td>
+                    {% set days = eq.days_until_maintenance() %}
+                    {% if days < 0 %}
+                    <span style="color: var(--alert-critical); font-weight: 600;">
+                        {{ days|abs }} days overdue
+                    </span>
+                    {% elif days <= 7 %}
+                    <span style="color: var(--alert-warning);">
+                        {{ days }} days
+                    </span>
+                    {% else %}
+                    {{ days }} days
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    <span style="color: var(--accent-primary);">→</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="panel">
+    <div style="text-align: center; padding: 40px;">
+        <p class="text-muted" style="font-size: 16px; margin-bottom: 16px;">
+            {% if status_filter != 'all' or type_filter != 'all' or location_filter != 'all' %}
+            No equipment matches the current filters.
+            {% else %}
+            No equipment registered yet.
+            {% endif %}
+        </p>
+        {% if status_filter != 'all' or type_filter != 'all' or location_filter != 'all' %}
+        <a href="{{ url_for('equipment.list') }}" class="btn btn-secondary">Clear Filters</a>
+        {% else %}
+        <button class="btn btn-primary" onclick="document.getElementById('addEquipmentModal').style.display='flex'">
+            + Add Your First Equipment
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ADD EQUIPMENT MODAL -->
+<div id="addEquipmentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: var(--bg-secondary); border: 1px solid var(--border-emphasis); border-radius: 6px; width: 500px; max-width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.6);">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-size: 18px; font-weight: 600;">Add New Equipment</h2>
+            <button onclick="document.getElementById('addEquipmentModal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer;">×</button>
+        </div>
+        <form method="POST" action="{{ url_for('equipment.add') }}" style="padding: 20px;">
+            <div class="form-group">
+                <label class="form-label">Equipment Name *</label>
+                <input type="text" name="name" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Serial Number *</label>
+                <input type="text" name="serial_number" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Type *</label>
+                <input type="text" name="equipment_type" class="form-input" required placeholder="e.g., Ventilator, ECG, X-Ray">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Location</label>
+                <input type="text" name="location" class="form-input" placeholder="e.g., ICU, Ward 3">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Manufacturer</label>
+                <input type="text" name="manufacturer" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Maintenance Interval (days) *</label>
+                <input type="number" name="maintenance_interval" class="form-input" required min="1" value="90">
+            </div>
+
+            <div class="flex flex-gap-md">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('addEquipmentModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Add Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
